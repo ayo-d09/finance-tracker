@@ -36,7 +36,7 @@ A containerised Python API deployed on AWS ECS Fargate with Terraform.
 
 ## Deploy
 
-1. Create S3 bucket and DynamoDB table for Terraform state
+1. Create a S3 bucket and DynamoDB table for Terraform state
 2. Add `AWS_ROLE_ARN` to GitHub secrets
 3. Push to main — pipeline handles the rest
 
