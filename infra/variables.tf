@@ -15,5 +15,5 @@ variable db_password {
 
 variable "container_image" {
   description = "The Docker image to deploy in ECS"
-  type        = string
+  default = "243768737939.dkr.ecr.us-east-1.amazonaws.com/finance-tracker:latest"
 }
