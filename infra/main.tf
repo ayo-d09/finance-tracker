@@ -23,5 +23,5 @@ module "ecs" {
   subnet_ids       = module.networking.private_subnet_ids
   db_endpoint      = module.rds.db_endpoint
   container_image  = var.container_image
-  ecs_security_group_id = module.networking.ecs_security_group_id
+  security_group_id = module.networking.ecs_security_group_id
 }

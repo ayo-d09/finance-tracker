@@ -20,10 +20,10 @@ resource "aws_db_instance" "main" {
   identifier              = "${var.app_name}-db"
   allocated_storage       = 20
   engine                  = "postgres"
-  engine_version          = "13.4"
+  engine_version          = "16.3"
   instance_class          = "db.t3.micro"
-  db_name                 = "${var.app_name}"
-  username                = "admin"
+  db_name                 = "financetracker"
+  username                = "financeadmin"
   password                = var.db_password
   db_subnet_group_name    = aws_db_subnet_group.main.name
   vpc_security_group_ids = [aws_security_group.rds.id]
