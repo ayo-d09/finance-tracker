@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
   test:
@@ -55,12 +58,16 @@ jobs:
           - name: Build and push Docker image
             id: build-image
             env:
-                ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+              ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
             run: |
-              docker build -t $ECR_REGISTRY/finance-tracker:${{ github.sha }} ./app
-              docker push $ECR_REGISTRY/finance-tracker:${{ github.sha }}
+                docker build \
+                  -t $ECR_REGISTRY/finance-tracker:${{ github.sha }} \
+                  -t $ECR_REGISTRY/finance-tracker:latest \
+                  ./app
+                docker push $ECR_REGISTRY/finance-tracker:${{ github.sha }}
+                docker push $ECR_REGISTRY/finance-tracker:latest
 
           - name: Deploy to ECS
             run: |
               aws ecs update-service --cluster finance-tracker-cluster --service finance-tracker-service --force-new-deployment
-              
+              aws ecs wait services-stable --cluster finance-tracker-cluster --services finance-tracker-service
