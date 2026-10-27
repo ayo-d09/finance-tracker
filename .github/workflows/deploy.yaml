@@ -26,11 +26,13 @@ jobs:
               
 
   build_and_deploy:
+        needs: test
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         runs-on: ubuntu-latest
         permissions:
           contents: read
           id-token: write
-          
+
         steps:
           - name: Checkout code
             uses: actions/checkout@v4
