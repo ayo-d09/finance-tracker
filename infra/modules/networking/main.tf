@@ -7,9 +7,9 @@ resource "aws_vpc" "main" {
 }
 
 resource "aws_subnet" "private" {
-  count = 2
-  vpc_id     = aws_vpc.main.id
-  cidr_block = "10.0.${count.index + 1}.0/24"
+  count             = 2
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.${count.index + 1}.0/24"
   availability_zone = data.aws_availability_zones.available.names[count.index]
 
   tags = {
@@ -18,9 +18,9 @@ resource "aws_subnet" "private" {
 }
 
 resource "aws_subnet" "public" {
-  count = 2
-  vpc_id     = aws_vpc.main.id
-  cidr_block = "10.0.${count.index + 10}.0/24"
+  count             = 2
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.${count.index + 10}.0/24"
   availability_zone = data.aws_availability_zones.available.names[count.index]
 
   tags = {
@@ -53,18 +53,26 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
+
 resource "aws_security_group" "ecs" {
   name        = "${var.app_name}-ecs-sg"
   description = "Security group for ECS tasks"
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    from_port   = 8000
-    to_port     = 8000
-    protocol    = "tcp"
+    from_port       = 8000
+    to_port         = 8000
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb.id]
+  }
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
+
 
 resource "aws_security_group" "alb" {
   name        = "${var.app_name}-alb-sg"

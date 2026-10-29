@@ -13,24 +13,24 @@ module "rds" {
   db_password           = var.db_password
   vpc_id                = module.networking.vpc_id
   subnet_ids            = module.networking.private_subnet_ids
-  ecs_security_group_id = module.networking.ecs_security_group_id  
+  ecs_security_group_id = module.networking.ecs_security_group_id
 }
 
 module "ecs" {
-  source           = "./modules/ecs"
-  app_name         = var.app_name
-  vpc_id           = module.networking.vpc_id
-  subnet_ids       = module.networking.private_subnet_ids
-  db_endpoint      = module.rds.db_endpoint
-  container_image  = var.container_image
+  source            = "./modules/ecs"
+  app_name          = var.app_name
+  vpc_id            = module.networking.vpc_id
+  subnet_ids        = module.networking.private_subnet_ids
+  db_endpoint       = module.rds.db_endpoint
+  container_image   = var.container_image
   security_group_id = module.networking.ecs_security_group_id
-  target_group_arn = module.alb.target_group_arn
+  target_group_arn  = module.alb.target_group_arn
 }
 
 module "alb" {
-  source           = "./modules/alb"
-  app_name         = var.app_name
-  vpc_id           = module.networking.vpc_id
-  subnet_ids       = module.networking.public_subnet_ids
-  security_group_id = module.networking.ecs_security_group_id
+  source            = "./modules/alb"
+  app_name          = var.app_name
+  vpc_id            = module.networking.vpc_id
+  subnet_ids        = module.networking.public_subnet_ids
+  security_group_id = module.networking.alb_security_group_id
 }
