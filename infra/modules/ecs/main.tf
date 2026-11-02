@@ -1,3 +1,4 @@
+data "aws_region" "current" {}
 resource "aws_ecs_cluster" "main" {
   name = "${var.app_name}-cluster"
 }
@@ -46,6 +47,14 @@ resource "aws_ecs_task_definition" "main" {
   container_definitions = jsonencode([{
     name  = "${var.app_name}-container"
     image = var.container_image
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        "awslogs-group"         = aws_cloudwatch_log_group.main.name
+        "awslogs-region"        = data.aws_region.current.region
+        "awslogs-stream-prefix" = "ecs"
+      }
+    }
     portMappings = [{
       containerPort = 8000
     }]
@@ -73,5 +82,13 @@ resource "aws_ecs_service" "main" {
     target_group_arn = var.target_group_arn
     container_name   = "${var.app_name}-container"
     container_port   = 8000
+  }
+}
+resource "aws_cloudwatch_log_group" "main" {
+  name              = "/ecs/${var.app_name}"
+  retention_in_days = 7
+
+  tags = {
+    Name = "${var.app_name}-logs"
   }
 }
