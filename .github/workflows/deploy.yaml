@@ -66,6 +66,7 @@ jobs:
                 docker push $ECR_REGISTRY/finance-tracker:latest
 
           - name: Deploy to ECS
+            if: vars.ECS_DEPLOY_ENABLED == 'true'
             run: |
               aws ecs update-service --cluster finance-tracker-cluster --service finance-tracker-service --force-new-deployment
               aws ecs wait services-stable --cluster finance-tracker-cluster --services finance-tracker-service
