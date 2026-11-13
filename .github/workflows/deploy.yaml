@@ -10,63 +10,86 @@ on:
 
 jobs:
   test:
-        runs-on: ubuntu-latest
-        defaults:
-          run:
-            working-directory: ./app
-        steps:
-          - name: Checkout code
-            uses: actions/checkout@v4
-          - name: Set up python
-            uses: actions/setup-python@v4
-            with:
-              python-version: '3.11'
+    runs-on: ubuntu-latest
 
-          - name: Install dependencies
-            run: |
-              python -m pip install --upgrade pip
-              pip install -r requirements.txt
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: financeadmin
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: financetracker
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U financeadmin -d financetracker"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
-          - name: Run tests
-            working-directory: .
-            run: python -m pytest app/tests
+    env:
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_NAME: financetracker
+      DB_USER: financeadmin
+      DB_PASSWORD: test_password
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r app/requirements.txt
+
+      - name: Initialize database
+        run: python -m app.src.init_db
+
+      - name: Run tests
+        run: python -m pytest app/tests -v
 
   build_and_deploy:
-        needs: test
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        runs-on: ubuntu-latest
-        permissions:
-          contents: read
-          id-token: write
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
 
-        steps:
-          - name: Checkout code
-            uses: actions/checkout@v4
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-          - name: configure AWS credentials
-            uses: aws-actions/configure-aws-credentials@v4
-            with:
-              role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-              aws-region: us-east-1
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
 
-          - name: login to ECR
-            id: login-ecr
-            uses: aws-actions/amazon-ecr-login@v2
+      - name: Login to ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
 
-          - name: Build and push Docker image
-            id: build-image
-            env:
-              ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-            run: |
-                docker build \
-                  -t $ECR_REGISTRY/finance-tracker:${{ github.sha }} \
-                  -t $ECR_REGISTRY/finance-tracker:latest \
-                  ./app
-                docker push $ECR_REGISTRY/finance-tracker:${{ github.sha }}
-                docker push $ECR_REGISTRY/finance-tracker:latest
+      - name: Build and push Docker image
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          docker build \
+            -t $ECR_REGISTRY/finance-tracker:${{ github.sha }} \
+            -t $ECR_REGISTRY/finance-tracker:latest \
+            ./app
+          docker push $ECR_REGISTRY/finance-tracker:${{ github.sha }}
+          docker push $ECR_REGISTRY/finance-tracker:latest
 
-          - name: Deploy to ECS
-            if: vars.ECS_DEPLOY_ENABLED == 'true'
-            run: |
-              aws ecs update-service --cluster finance-tracker-cluster --service finance-tracker-service --force-new-deployment
-              aws ecs wait services-stable --cluster finance-tracker-cluster --services finance-tracker-service
+      - name: Deploy to ECS
+        if: vars.ECS_DEPLOY_ENABLED == 'true'
+        run: |
+          aws ecs update-service --cluster finance-tracker-cluster --service finance-tracker-service --force-new-deployment
+          aws ecs wait services-stable --cluster finance-tracker-cluster --services finance-tracker-service
