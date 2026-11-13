@@ -1,7 +1,7 @@
 fastapi
-uvicorn 
+uvicorn
 psycopg2-binary
+python-dotenv
+pydantic
 pytest
 httpx
-httpx2
-python-dotenv
