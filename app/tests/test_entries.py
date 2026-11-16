@@ -165,3 +165,68 @@ def test_delete_nonexistent_entry():
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Entry not found."}
+
+def test_get_summary():
+    income_payload = {
+        "amount": 10000,
+        "type": "income",
+        "description": "Summary income test",
+        "date": "2026-11-16",
+    }
+
+    expense_payload = {
+        "amount": 3000,
+        "type": "expense",
+        "description": "Summary expense test",
+        "date": "2026-11-16",
+    }
+
+    created_ids = []
+
+    # Record the existing totals before creating test entries
+    baseline_response = client.get("/summary")
+    baseline = baseline_response.json()
+
+    try:
+        # Create income entry
+        income_response = client.post("/entries", json=income_payload)
+        assert income_response.status_code == 201
+        created_ids.append(income_response.json()["id"])
+
+        # Create expense entry
+        expense_response = client.post("/entries", json=expense_payload)
+        assert expense_response.status_code == 201
+        created_ids.append(expense_response.json()["id"])
+
+        # Request summary
+        response = client.get("/summary")
+
+        assert response.status_code == 200
+
+        summary = response.json()
+
+        from decimal import Decimal
+
+        assert Decimal(summary["total_income"]) == (
+            Decimal(baseline["total_income"]) + Decimal("10000.00")
+        )
+
+        assert Decimal(summary["total_expenses"]) == (
+            Decimal(baseline["total_expenses"]) + Decimal("3000.00")
+        )
+
+        assert Decimal(summary["balance"]) == (
+            Decimal(baseline["balance"]) + Decimal("7000.00")
+        )
+    finally:
+        if created_ids:
+            connection = get_connection()
+            try:
+                with connection.cursor() as cursor:
+                    cursor.execute(
+                        "DELETE FROM entries WHERE id = ANY(%s)",
+                        (created_ids,),
+                    )
+                connection.commit()
+            finally:
+                connection.close()

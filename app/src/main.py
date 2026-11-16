@@ -4,7 +4,7 @@ from psycopg2.extras import RealDictCursor
 from fastapi import FastAPI, HTTPException, Response, status
 
 from .database import get_connection
-from .schemas import EntryCreate, EntryResponse
+from .schemas import EntryCreate, EntryResponse, SummaryResponse
 
 
 app = FastAPI()
@@ -160,6 +160,39 @@ def delete_entry(entry_id: int):
         raise HTTPException(
             status_code=500,
             detail="Failed to delete entry.",
+        ) from error
+
+    finally:
+        connection.close()
+
+
+@app.get("/summary", response_model=SummaryResponse)
+def get_summary():
+    connection = get_connection()
+
+    try:
+        with connection.cursor(cursor_factory=RealDictCursor) as cursor:
+            cursor.execute(
+                """
+                SELECT
+                    COALESCE(SUM(amount) FILTER (WHERE type = 'income'), 0) AS total_income,
+                    COALESCE(SUM(amount) FILTER (WHERE type = 'expense'), 0) AS total_expenses
+                FROM entries;
+                """
+            )
+
+            summary = cursor.fetchone()
+
+        summary["balance"] = (
+            summary["total_income"] - summary["total_expenses"]
+        )
+
+        return SummaryResponse(**summary)
+
+    except psycopg2.Error as error:
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to retrieve financial summary.",
         ) from error
 
     finally:
