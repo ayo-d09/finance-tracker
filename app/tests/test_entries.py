@@ -45,7 +45,6 @@ def test_create_and_retrieve_entry():
         )
 
     finally:
-        # Remove the test record so it doesn't pollute your database
         connection = get_connection()
 
         try:
@@ -58,3 +57,77 @@ def test_create_and_retrieve_entry():
         finally:
             connection.close()
         
+
+def test_update_entry():
+    original_description = f"API test {uuid4()}"
+    updated_description = f"Updated API test {uuid4()}"
+
+    payload = {
+        "amount": 2500,
+        "type": "expense",
+        "description": original_description,
+        "date": "2026-11-13",
+    }
+
+    created_entry = None
+
+    try:
+        # 1. Create an entry to update
+        create_response = client.post("/entries", json=payload)
+
+        assert create_response.status_code == 201
+
+        created_entry = create_response.json()
+
+        # 2. Prepare the updated data
+        update_payload = {
+            "amount": 3000,
+            "type": "income",
+            "description": updated_description,
+            "date": "2026-11-14",
+        }
+
+        # 3. Update the entry using its ID
+        update_response = client.put(
+            f"/entries/{created_entry['id']}",
+            json=update_payload,
+        )
+
+        assert update_response.status_code == 200
+
+        # 4. Verify the updated data
+        updated_entry = update_response.json()
+
+        assert updated_entry["amount"] == "3000.00"
+        assert updated_entry["type"] == "income"
+        assert updated_entry["description"] == updated_description
+        assert updated_entry["date"] == "2026-11-14"
+
+    finally:
+        # 5. Clean up the test record
+        if created_entry is not None:
+            connection = get_connection()
+
+            try:
+                with connection.cursor() as cursor:
+                    cursor.execute(
+                        "DELETE FROM entries WHERE id = %s",
+                        (created_entry["id"],),
+                    )
+                connection.commit()
+            finally:
+                connection.close()
+
+
+def test_update_nonexistent_entry():
+    payload = {
+        "amount": 3000,
+        "type": "income",
+        "description": "Nonexistent entry test",
+        "date": "2026-11-14",
+    }
+
+    response = client.put("/entries/99999", json=payload)
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Entry not found."}
