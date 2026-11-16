@@ -78,3 +78,51 @@ def get_entries():
 
     finally:
         connection.close()
+
+
+@app.put("/entries/{entry_id}", response_model=EntryResponse)
+def update_entry(entry_id: int, entry: EntryCreate):
+    connection = get_connection()
+
+    try:
+        with connection.cursor(cursor_factory=RealDictCursor) as cursor:
+            cursor.execute(
+                """
+                UPDATE entries
+                SET amount = %s,
+                    type = %s,
+                    description = %s,
+                    date = %s
+                WHERE id = %s
+                RETURNING id, amount, type, description, date, created_at;
+                """,
+                (
+                    entry.amount,
+                    entry.type,
+                    entry.description,
+                    entry.date,
+                    entry_id,
+                ),
+            )
+
+            updated_entry = cursor.fetchone()
+
+        if updated_entry is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Entry not found.",
+            )
+
+        connection.commit()
+
+        return EntryResponse(**updated_entry)
+
+    except psycopg2.Error as error:
+        connection.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to update entry.",
+        ) from error
+
+    finally:
+        connection.close()
