@@ -1,7 +1,7 @@
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, Response, status
 
 from .database import get_connection
 from .schemas import EntryCreate, EntryResponse
@@ -122,6 +122,44 @@ def update_entry(entry_id: int, entry: EntryCreate):
         raise HTTPException(
             status_code=500,
             detail="Failed to update entry.",
+        ) from error
+
+    finally:
+        connection.close()
+
+
+@app.delete("/entries/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_entry(entry_id: int):
+    connection = get_connection()
+
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                DELETE FROM entries
+                WHERE id = %s
+                RETURNING id;
+                """,
+                (entry_id,),
+            )
+
+            deleted_entry = cursor.fetchone()
+
+        if deleted_entry is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Entry not found.",
+            )
+
+        connection.commit()
+
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    except psycopg2.Error as error:
+        connection.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to delete entry.",
         ) from error
 
     finally:
