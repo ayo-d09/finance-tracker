@@ -131,3 +131,37 @@ def test_update_nonexistent_entry():
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Entry not found."}
+
+
+def test_delete_entry():
+    payload = {
+        "amount": 2500,
+        "type": "expense",
+        "description": "Delete entry test",
+        "date": "2026-11-16",
+    }
+
+    # 1. Create an entry to delete
+    create_response = client.post("/entries", json=payload)
+    assert create_response.status_code == 201
+
+    entry_id = create_response.json()["id"]
+
+    # 2. Delete the entry
+    delete_response = client.delete(f"/entries/{entry_id}")
+
+    assert delete_response.status_code == 204
+    assert delete_response.content == b""
+
+    # 3. Verify the entry no longer exists
+    get_response = client.get("/entries")
+    remaining_ids = [entry["id"] for entry in get_response.json()]
+
+    assert entry_id not in remaining_ids
+
+
+def test_delete_nonexistent_entry():
+    response = client.delete("/entries/99999")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Entry not found."}
