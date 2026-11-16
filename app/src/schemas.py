@@ -21,3 +21,8 @@ class EntryResponse(BaseModel):
     description: str
     date: date
     created_at: datetime
+
+class SummaryResponse(BaseModel):
+    total_income: Decimal
+    total_expenses: Decimal
+    balance: Decimal
