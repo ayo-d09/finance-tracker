@@ -1,4 +1,4 @@
-# Finance Tracker
+# Finance Tracker (VERSION 02 SOON)
 
 A containerised Python API deployed on AWS ECS Fargate with Terraform.
 
